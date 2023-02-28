@@ -1,0 +1,25 @@
+{
+    "manifest_version": 3,
+    "name": "Focus Hub",
+    "description": "Allows the user to block specific websites and instead display a motivational page.",
+    "version": "1.0",
+    "icons": {
+      "16": "images/icon/icon-16.png",
+      "32": "images/icon/icon-32.png",
+      "48": "images/icon/icon-48.png",
+      "128": "images/icon/icon-128.png"
+    },
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+          "16": "images/icon/icon-16.png",
+          "32": "images/icon/icon-32.png",
+          "48": "images/icon/icon-48.png",
+          "128": "images/icon/icon-128.png"
+        }
+    },
+    "background": {
+        "service_worker": "scripts/background.js"
+    },
+    "permissions": ["tabs"]
+  }
