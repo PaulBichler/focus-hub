@@ -17,8 +17,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 chrome.tabs.onUpdated.addListener( function (tabId, changeInfo, tab) {
     if(isOn && changeInfo.status === 'complete') {
         if(checkUrl(tab.url)) {
-            console.log('blocking ' + tab.url);
-            chrome.tabs.update(tabId, { url: 'pages/index.html' });
+            redirectTab(tab);
         }
     }
 });
@@ -26,6 +25,17 @@ chrome.tabs.onUpdated.addListener( function (tabId, changeInfo, tab) {
 function toggle() {
     isOn = !isOn;
     chrome.action.setBadgeText({ text: isOn ? "ON" : "OFF" });
+
+    if(isOn) {
+        chrome.tabs.query({}, function(tabs) {
+            tabs.forEach(tab => {
+                if(checkUrl(tab.url)) {
+                    redirectTab(tab);
+                }
+            });
+        });
+    }
+
     return isOn;
 }
 
@@ -37,4 +47,9 @@ function checkUrl(url) {
     }
     
     return false;
+}
+
+function redirectTab(tab) {
+    console.log('blocking ' + tab.url);
+    chrome.tabs.update(tab.id, { url: 'pages/index.html' });
 }
