@@ -2,6 +2,8 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.action.setBadgeText({
         text: "OFF",
     });
+
+    chrome.storage.local.set({ IsFocusModeOn: false });
 });
 
 let isOn = false;
@@ -36,6 +38,7 @@ function toggle() {
         });
     }
 
+    chrome.storage.local.set({ IsFocusModeOn: isOn });
     return isOn;
 }
 

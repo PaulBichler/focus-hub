@@ -8,4 +8,10 @@ focusModeToggle.onclick = function() {
     });
 }
 
-focusModeToggle.checked = false;
+chrome.storage.local.get(["IsFocusModeOn"]).then((result) => {
+    focusModeToggle.checked = result.IsFocusModeOn;
+});
+
+document.getElementById("focusModeSettingsButton").onclick = function() {
+    location.href = '../pages/index.html';
+};
