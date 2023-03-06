@@ -1,34 +1,43 @@
+let isFocusModeOn = false;
+let blockedUrls = [];
+
 chrome.runtime.onInstalled.addListener(() => {
     chrome.action.setBadgeText({
         text: "OFF",
     });
 
     chrome.storage.local.set({ IsFocusModeOn: false });
+    chrome.storage.local.set({ BlockedUrls: ["facebook.com"] });
+    isFocusModeOn = false;
+    blockedUrls = ["facebook.com"];
 });
 
-let isOn = false;
+chrome.storage.local.get(["IsFocusModeOn"]).then((result) => {
+    setActiveFocusMode(result.IsFocusModeOn);
+});
+
+chrome.storage.local.get(["BlockedUrls"]).then((result) => {
+    blockedUrls = result.BlockedUrls;
+    console.log(result.BlockedUrls);
+});
 
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    switch(request.contentScriptQuery){
+    switch(request.action){
         case "toggleOnOff":
             sendResponse(toggle());
             break;
     }
 });
 
-chrome.tabs.onUpdated.addListener( function (tabId, changeInfo, tab) {
-    if(isOn && changeInfo.status === 'complete') {
-        if(checkUrl(tab.url)) {
-            redirectTab(tab);
-        }
-    }
-});
-
 function toggle() {
-    isOn = !isOn;
-    chrome.action.setBadgeText({ text: isOn ? "ON" : "OFF" });
+    return setActiveFocusMode(!isFocusModeOn);
+}
 
-    if(isOn) {
+function setActiveFocusMode(active) {
+    isFocusModeOn = active;
+    chrome.action.setBadgeText({ text: isFocusModeOn ? "ON" : "OFF" });
+
+    if(isFocusModeOn) {
         chrome.tabs.query({}, function(tabs) {
             tabs.forEach(tab => {
                 if(checkUrl(tab.url)) {
@@ -38,21 +47,32 @@ function toggle() {
         });
     }
 
-    chrome.storage.local.set({ IsFocusModeOn: isOn });
-    return isOn;
+    chrome.storage.local.set({ IsFocusModeOn: isFocusModeOn });
+    return isFocusModeOn;
 }
+
+chrome.tabs.onUpdated.addListener( function (tabId, changeInfo, tab) {
+    if(isFocusModeOn && changeInfo.status === 'complete') {
+        if(checkUrl(tab.url)) {
+            redirectTab(tab);
+        }
+    }
+});
 
 function checkUrl(url) {
     if(url === undefined) { return false; } 
     
-    if(url.includes("facebook.com")) {
-        return true;
-    }
+    let foundMatch = false;
+    blockedUrls.forEach((blockedUrl) => {
+        if(url.includes(blockedUrl)) {
+            foundMatch = true;
+        }
+    });
     
-    return false;
+    return foundMatch;
 }
 
 function redirectTab(tab) {
     console.log('blocking ' + tab.url);
-    chrome.tabs.update(tab.id, { url: 'pages/index.html' });
+    chrome.tabs.update(tab.id, { url: 'src/pages/index.html' });
 }
