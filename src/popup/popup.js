@@ -27,13 +27,17 @@ function initBlockedUrls(urls) {
 
     let addUrlForm = document.getElementById("addUrlForm");
     addUrlForm.submitButton.onclick = function() {
-        console.log(addUrlForm.inputBox.value);
+        addUrlToBlockedList(addUrlForm.inputBox.value);
     };
 }
 
 function addUrlToBlockedList(url) {
-    addUrlToHtmlList(url, blockedUrls.push(url) - 1);
-    chrome.storage.local.set({ BlockedUrls: blockedUrls });
+    let urlParse = url.match(/^(?<protocol>https?:\/\/)?(?=(?<fqdn>[^:/]+))(?:(?<service>www|ww\d|cdn|mail|pop\d+|ns\d+|git)\.)?(?:(?<subdomain>[^:/]+)\.)*(?<domain>[^:/]+\.[a-z0-9]+)(?::(?<port>\d+))?(?<path>\/[^?]*)?(?:\?(?<query>[^#]*))?(?:#(?<hash>.*))?/i);
+
+    if(urlParse != null) {
+        addUrlToHtmlList(url, blockedUrls.push(url) - 1);
+        chrome.storage.local.set({ BlockedUrls: blockedUrls });
+    }
 }
 
 function removeFromBlockedListAt(index) {
@@ -58,5 +62,5 @@ function addUrlToHtmlList(url, indexInArr) {
             </div>
         </li>`;
 
-        document.getElementById("urlRemoveButton-" + indexInArr).onclick = function() { removeFromBlockedListAt(indexInArr); };
+    document.getElementById("urlRemoveButton-" + indexInArr).onclick = function() { removeFromBlockedListAt(indexInArr); };
 }
