@@ -35,9 +35,15 @@ addUrlForm.addEventListener('submit', function(event) {
     }
 });
 
-addUrlForm.inputBox.addEventListener('change', function(event) {
-    event.target.setCustomValidity("");
+addUrlForm.inputBox.addEventListener('input', function(event) {
+    event.target.setCustomValidity('');
 });
+
+addUrlForm.tabUrlPasteButton.onclick = function() {
+    chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
+        addUrlForm.inputBox.value = tabs[0].url;
+    });
+};
 
 chrome.storage.local.get(["BlockedUrls"]).then((result) => {
     initBlockedUrls(result.BlockedUrls);
