@@ -1,5 +1,6 @@
 var focusModeToggle = document.getElementById("focusModeToggle");
 var urlListParentNode = document.getElementById("blockedUrlList");
+var addUrlForm = document.getElementById("addUrlForm");
 var blockedUrls = [];
 
 focusModeToggle.onclick = function() {
@@ -14,6 +15,30 @@ chrome.storage.local.get(["IsFocusModeOn"]).then((result) => {
     focusModeToggle.checked = result.IsFocusModeOn;
 });
 
+addUrlForm.addEventListener('submit', function(event) {
+    event.preventDefault(); //prevents reload
+
+    let url = addUrlForm.inputBox.value;
+    if(!url.match(/^(?<protocol>https?:\/\/)?(?=(?<fqdn>[^:/]+))(?:(?<service>www|ww\d|cdn|mail|pop\d+|ns\d+|git)\.)?(?:(?<subdomain>[^:/]+)\.)*(?<domain>[^:/]+\.[a-z0-9]+)(?::(?<port>\d+))?(?<path>\/[^?]*)?(?:\?(?<query>[^#]*))?(?:#(?<hash>.*))?/i)) {
+        //url is invalid
+        addUrlForm.inputBox.setCustomValidity("URL is not valid!");
+        addUrlForm.inputBox.reportValidity();
+    }
+    else if(blockedUrls.includes(url)) {
+        //url is already blocked
+        addUrlForm.inputBox.setCustomValidity("This URL is already blocked!");
+        addUrlForm.inputBox.reportValidity();
+    }
+    else {
+        addUrlToBlockedList(url);
+        addUrlForm.inputBox.value = "";
+    }
+});
+
+addUrlForm.inputBox.addEventListener('change', function(event) {
+    event.target.setCustomValidity("");
+});
+
 chrome.storage.local.get(["BlockedUrls"]).then((result) => {
     initBlockedUrls(result.BlockedUrls);
 });
@@ -24,20 +49,11 @@ function initBlockedUrls(urls) {
     for (let i = 0; i < blockedUrls.length; i++) {
         addUrlToHtmlList(blockedUrls[i], i);
     }
-
-    let addUrlForm = document.getElementById("addUrlForm");
-    addUrlForm.submitButton.onclick = function() {
-        addUrlToBlockedList(addUrlForm.inputBox.value);
-    };
 }
 
 function addUrlToBlockedList(url) {
-    let urlParse = url.match(/^(?<protocol>https?:\/\/)?(?=(?<fqdn>[^:/]+))(?:(?<service>www|ww\d|cdn|mail|pop\d+|ns\d+|git)\.)?(?:(?<subdomain>[^:/]+)\.)*(?<domain>[^:/]+\.[a-z0-9]+)(?::(?<port>\d+))?(?<path>\/[^?]*)?(?:\?(?<query>[^#]*))?(?:#(?<hash>.*))?/i);
-
-    if(urlParse != null) {
-        addUrlToHtmlList(url, blockedUrls.push(url) - 1);
-        chrome.storage.local.set({ BlockedUrls: blockedUrls });
-    }
+    addUrlToHtmlList(url, blockedUrls.push(url) - 1);
+    chrome.storage.local.set({ BlockedUrls: blockedUrls });
 }
 
 function removeFromBlockedListAt(index) {
@@ -47,7 +63,7 @@ function removeFromBlockedListAt(index) {
 }
 
 function addUrlToHtmlList(url, indexInArr) {
-    urlListParentNode.innerHTML +=
+    urlListParentNode.insertAdjacentHTML('beforeend',
         `<li class="py-3 sm:py-4" id="blockedUrl-` + indexInArr +`">
             <div class="flex items-center space-x-4">
                 <div class="flex-1 items-center min-w-0">
@@ -60,7 +76,7 @@ function addUrlToHtmlList(url, indexInArr) {
                     </button>
                 </div>
             </div>
-        </li>`;
+        </li>`);
 
     document.getElementById("urlRemoveButton-" + indexInArr).onclick = function() { removeFromBlockedListAt(indexInArr); };
 }
