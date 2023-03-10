@@ -18,19 +18,22 @@ chrome.storage.local.get(["IsFocusModeOn"]).then((result) => {
 addUrlForm.addEventListener('submit', function(event) {
     event.preventDefault(); //prevents reload
 
-    let url = addUrlForm.inputBox.value;
-    if(!url.match(/^(?<protocol>https?:\/\/)?(?=(?<fqdn>[^:/]+))(?:(?<service>www|ww\d|cdn|mail|pop\d+|ns\d+|git)\.)?(?:(?<subdomain>[^:/]+)\.)*(?<domain>[^:/]+\.[a-z0-9]+)(?::(?<port>\d+))?(?<path>\/[^?]*)?(?:\?(?<query>[^#]*))?(?:#(?<hash>.*))?/i)) {
+    let input = addUrlForm.inputBox.value;
+    let urlObj = parseUrl(input, addUrlForm.blockCompleteDomainCheckbox.checked);
+
+    if(!urlObj) {
         //url is invalid
         addUrlForm.inputBox.setCustomValidity("URL is not valid!");
         addUrlForm.inputBox.reportValidity();
     }
-    else if(blockedUrls.includes(url)) {
+    else if(blockedUrls.includes(input)) {
         //url is already blocked
         addUrlForm.inputBox.setCustomValidity("This URL is already blocked!");
         addUrlForm.inputBox.reportValidity();
     }
     else {
-        addUrlToBlockedList(url);
+        //url is valid! Add it!
+        addUrlToBlockedList(urlObj);
         addUrlForm.inputBox.value = "";
     }
 });
@@ -53,12 +56,13 @@ function initBlockedUrls(urls) {
     blockedUrls = urls;
     
     for (let i = 0; i < blockedUrls.length; i++) {
-        addUrlToHtmlList(blockedUrls[i], i);
+        addUrlToHtmlList(getDisplayUrl(blockedUrls[i]), i);
     }
 }
 
-function addUrlToBlockedList(url) {
-    addUrlToHtmlList(url, blockedUrls.push(url) - 1);
+function addUrlToBlockedList(urlObj) {
+    let urlIndex = blockedUrls.push(urlObj) - 1;
+    addUrlToHtmlList(getDisplayUrl(urlObj), urlIndex);
     chrome.storage.local.set({ BlockedUrls: blockedUrls });
 }
 
@@ -85,4 +89,20 @@ function addUrlToHtmlList(url, indexInArr) {
         </li>`);
 
     document.getElementById("urlRemoveButton-" + indexInArr).onclick = function() { removeFromBlockedListAt(indexInArr); };
+}
+
+function parseUrl(urlString, blockCompleteDomain) {
+    let urlObj = urlString.match(/^(?<protocol>https?:\/\/)?(?=(?<fqdn>[^:/]+))(?:(?<service>www|ww\d|cdn|mail|pop\d+|ns\d+|git)\.)?(?:(?<subdomain>[^:/]+)\.)*(?<domain>[^:/]+\.[a-z0-9]+)(?::(?<port>\d+))?(?<path>\/[^?]*)?(?:\?(?<query>[^#]*))?(?:#(?<hash>.*))?/i);
+
+    if(!urlObj) { return null; } 
+
+    return {
+        input: urlString,
+        fqdn: urlObj[2],
+        blockCompleteDomain: blockCompleteDomain,
+    };
+}
+
+function getDisplayUrl(parsedUrlObj) {
+    return parsedUrlObj.blockCompleteDomain ? parsedUrlObj.fqdn + "/*" : parsedUrlObj.input;
 }

@@ -7,9 +7,9 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 
     chrome.storage.local.set({ IsFocusModeOn: false });
-    chrome.storage.local.set({ BlockedUrls: ["facebook.com"] });
+    chrome.storage.local.set({ BlockedUrls: [] });
     isFocusModeOn = false;
-    blockedUrls = ["facebook.com"];
+    blockedUrls = [];
 });
 
 chrome.storage.local.get(["IsFocusModeOn"]).then((result) => {
@@ -64,7 +64,9 @@ function checkUrl(url) {
     
     let foundMatch = false;
     blockedUrls.forEach((blockedUrl) => {
-        if(url.includes(blockedUrl)) {
+        let stringToCheck = blockedUrl.blockCompleteDomain ? blockedUrl.fqdn : blockedUrl.input;
+        console.log(stringToCheck);
+        if(url.includes(stringToCheck)) {
             foundMatch = true;
         }
     });
