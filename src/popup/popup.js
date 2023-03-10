@@ -1,7 +1,6 @@
 var focusModeToggle = document.getElementById("focusModeToggle");
 var urlListParentNode = document.getElementById("blockedUrlList");
 var addUrlForm = document.getElementById("addUrlForm");
-var blockedUrls = [];
 
 focusModeToggle.onclick = function() {
     chrome.runtime.sendMessage({
@@ -15,61 +14,66 @@ chrome.storage.local.get(["IsFocusModeOn"]).then((result) => {
     focusModeToggle.checked = result.IsFocusModeOn;
 });
 
+chrome.storage.local.get(["BlockedUrls"]).then((result) => {
+    initBlockedUrls(result.BlockedUrls);
+});
+
+function initBlockedUrls(urls) {
+    for (let i = 0; i < urls.length; i++) {
+        addUrlToHtmlList(getDisplayUrl(urls[i]), i);
+    }
+}
+
 addUrlForm.addEventListener('submit', function(event) {
     event.preventDefault(); //prevents reload
 
-    let input = addUrlForm.inputBox.value;
-    let urlObj = parseUrl(input, addUrlForm.blockCompleteDomainCheckbox.checked);
-
-    if(!urlObj) {
-        //url is invalid
-        addUrlForm.inputBox.setCustomValidity("URL is not valid!");
-        addUrlForm.inputBox.reportValidity();
-    }
-    else if(blockedUrls.includes(input)) {
-        //url is already blocked
-        addUrlForm.inputBox.setCustomValidity("This URL is already blocked!");
-        addUrlForm.inputBox.reportValidity();
-    }
-    else {
-        //url is valid! Add it!
-        addUrlToBlockedList(urlObj);
-        addUrlForm.inputBox.value = "";
-    }
+    chrome.runtime.sendMessage({
+        action: "addBlockedUrl",
+        input: addUrlForm.inputBox.value,
+        blockCompleteDomain: addUrlForm.blockCompleteDomainCheckbox.checked,
+    }, function(response) {
+        if(!response) {
+            addUrlForm.inputBox.setCustomValidity("Unknown Error!");
+            addUrlForm.inputBox.reportValidity();
+        }
+        else if(response.error) {
+            addUrlForm.inputBox.setCustomValidity(response.error);
+            addUrlForm.inputBox.reportValidity();
+        }
+        else {
+            addUrlToHtmlList(getDisplayUrl(response.addedUrl), response.index);
+        }
+    });
 });
 
 addUrlForm.inputBox.addEventListener('input', function(event) {
     event.target.setCustomValidity('');
 });
 
+addUrlForm.inputBox.addEventListener('change', function(event) {
+    event.target.setCustomValidity('');
+});
+
+addUrlForm.blockCompleteDomainCheckbox.addEventListener('change', function(event) {
+    addUrlForm.inputBox.setCustomValidity('');
+});
+
 addUrlForm.tabUrlPasteButton.onclick = function() {
     chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
         addUrlForm.inputBox.value = tabs[0].url;
+        addUrlForm.inputBox.setCustomValidity('');
     });
 };
 
-chrome.storage.local.get(["BlockedUrls"]).then((result) => {
-    initBlockedUrls(result.BlockedUrls);
-});
-
-function initBlockedUrls(urls) {
-    blockedUrls = urls;
-    
-    for (let i = 0; i < blockedUrls.length; i++) {
-        addUrlToHtmlList(getDisplayUrl(blockedUrls[i]), i);
-    }
-}
-
-function addUrlToBlockedList(urlObj) {
-    let urlIndex = blockedUrls.push(urlObj) - 1;
-    addUrlToHtmlList(getDisplayUrl(urlObj), urlIndex);
-    chrome.storage.local.set({ BlockedUrls: blockedUrls });
-}
-
 function removeFromBlockedListAt(index) {
-    blockedUrls.splice(index, 1);
-    chrome.storage.local.set({ BlockedUrls: blockedUrls });
-    urlListParentNode.removeChild(document.getElementById("blockedUrl-" + index));
+    chrome.runtime.sendMessage({
+        action: "removeBlockedUrl",
+        index: index,
+    }, function(response) {
+        if(response && response.index != -1) {
+            urlListParentNode.removeChild(document.getElementById("blockedUrl-" + response.index));
+        }
+    });
 }
 
 function addUrlToHtmlList(url, indexInArr) {
@@ -89,18 +93,6 @@ function addUrlToHtmlList(url, indexInArr) {
         </li>`);
 
     document.getElementById("urlRemoveButton-" + indexInArr).onclick = function() { removeFromBlockedListAt(indexInArr); };
-}
-
-function parseUrl(urlString, blockCompleteDomain) {
-    let urlObj = urlString.match(/^(?<protocol>https?:\/\/)?(?=(?<fqdn>[^:/]+))(?:(?<service>www|ww\d|cdn|mail|pop\d+|ns\d+|git)\.)?(?:(?<subdomain>[^:/]+)\.)*(?<domain>[^:/]+\.[a-z0-9]+)(?::(?<port>\d+))?(?<path>\/[^?]*)?(?:\?(?<query>[^#]*))?(?:#(?<hash>.*))?/i);
-
-    if(!urlObj) { return null; } 
-
-    return {
-        input: urlString,
-        fqdn: urlObj[2],
-        blockCompleteDomain: blockCompleteDomain,
-    };
 }
 
 function getDisplayUrl(parsedUrlObj) {
