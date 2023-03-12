@@ -18,8 +18,10 @@
           "128": "src/images/icon/icon-128.png"
         }
     },
+    "minimum_chrome_version": "92",
     "background": {
-        "service_worker": "src/background.js"
+        "service_worker": "src/background.js",
+        "type": "module"
     },
     "permissions": ["tabs", "storage"]
   }

@@ -1,3 +1,5 @@
+import * as helper from './scripts/helper.js';
+
 let isFocusModeOn = false;
 let blockedUrls = [];
 
@@ -18,7 +20,6 @@ chrome.storage.local.get(["IsFocusModeOn"]).then((result) => {
 
 chrome.storage.local.get(["BlockedUrls"]).then((result) => {
     blockedUrls = result.BlockedUrls;
-    console.log(result.BlockedUrls);
 });
 
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
@@ -74,9 +75,7 @@ function checkUrl(url) {
     
     let foundMatch = false;
     blockedUrls.forEach((blockedUrl) => {
-        let stringToCheck = blockedUrl.blockCompleteDomain ? blockedUrl.fqdn : blockedUrl.input;
-        console.log(stringToCheck);
-        if(url.includes(stringToCheck)) {
+        if(url.includes(blockedUrl.fqdn)) {
             foundMatch = true;
         }
     });
@@ -95,28 +94,31 @@ function handleAddUrlRequest(request) {
     if(!parsedUrl) {
         return { error: "URL is not valid!" };
     }
-    else if(blockedUrls.some(el => JSON.stringify(el) === JSON.stringify(parsedUrl))) {
+    else if(blockedUrls.some(el => helper.urlObjEquals(el, parsedUrl))) {
         return { error: "This URL is already blocked!" };
     }
 
-    let newIndex = addUrlToBlockedList(parsedUrl);
-    return { 
-        addedUrl: parsedUrl, 
-        index: newIndex 
-    };
+    addUrlToBlockedList(parsedUrl);
+    return parsedUrl;
 }
 
 function handleRemoveUrlRequest(request) {
-    blockedUrls.splice(request.index, 1);
+    blockedUrls.splice(blockedUrls.findIndex((el) => helper.urlObjEquals(el, request.urlHash)), 1);
     chrome.storage.local.set({ BlockedUrls: blockedUrls });
-    return { index: request.index };
+
+    console.log("Removed URL from the blocked list!");
+    console.log(blockedUrls);
+
+    return { urlHash: request.urlHash };
 }
 
 function addUrlToBlockedList(urlObj) {
-    let index = blockedUrls.push(urlObj) - 1;
+    blockedUrls.push(urlObj);
     chrome.storage.local.set({ BlockedUrls: blockedUrls });
     checkAllActiveTabs();
-    return index;
+
+    console.log("Added new URL to the blocked list!");
+    console.log(blockedUrls);
 }
 
 function parseUrl(urlString, blockCompleteDomain) {
@@ -125,8 +127,7 @@ function parseUrl(urlString, blockCompleteDomain) {
     if(!urlObj) { return null; } 
 
     return {
-        input: urlString,
-        fqdn: urlObj[2],
-        blockCompleteDomain: blockCompleteDomain,
+        fqdn: blockCompleteDomain ? urlObj[2] : urlString,
+        blockCompleteDomain: blockCompleteDomain
     };
 }
