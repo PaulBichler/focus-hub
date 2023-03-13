@@ -1,5 +1,5 @@
 import * as helper from '../scripts/helper.js';
-import { addAlert } from '../scripts/toastAlertSystem.js';
+import { addAlert } from '../scripts/alertSystem.js';
 
 const focusModeToggle = document.getElementById("focusModeToggle");
 const urlListParentNode = document.getElementById("blockedUrlList");
