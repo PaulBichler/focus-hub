@@ -115,7 +115,10 @@ function handleRemoveUrlRequest(request) {
 function addUrlToBlockedList(urlObj) {
     blockedUrls.push(urlObj);
     chrome.storage.local.set({ BlockedUrls: blockedUrls });
-    checkAllActiveTabs();
+
+    if(isFocusModeOn) {
+        checkAllActiveTabs();
+    }
 
     console.log("Added new URL to the blocked list!");
     console.log(blockedUrls);
