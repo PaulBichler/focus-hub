@@ -58,12 +58,10 @@ addUrlForm.addEventListener('submit', function(event) {
         blockCompleteDomain: addUrlForm.blockCompleteDomainCheckbox.checked,
     }, function(response) {
         if(!response) {
-            addUrlForm.inputBox.setCustomValidity("Unknown Error!");
-            addUrlForm.inputBox.reportValidity();
+            addAlert({ type: "error",  message: "Unknown Error!" });
         }
         else if(response.error) {
-            addUrlForm.inputBox.setCustomValidity(response.error);
-            addUrlForm.inputBox.reportValidity();
+            addAlert({ type: "error",  message: response.error });
         }
         else {
             addUrlToHtmlList(response);
@@ -71,22 +69,9 @@ addUrlForm.addEventListener('submit', function(event) {
     });
 });
 
-addUrlForm.inputBox.addEventListener('input', function(event) {
-    event.target.setCustomValidity('');
-});
-
-addUrlForm.inputBox.addEventListener('change', function(event) {
-    event.target.setCustomValidity('');
-});
-
-addUrlForm.blockCompleteDomainCheckbox.addEventListener('change', function(event) {
-    addUrlForm.inputBox.setCustomValidity('');
-});
-
 addUrlForm.tabUrlPasteButton.onclick = function() {
     chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
         addUrlForm.inputBox.value = tabs[0].url;
-        addUrlForm.inputBox.setCustomValidity('');
     });
 };
 
@@ -97,7 +82,6 @@ function removeFromBlockedListAt(hash) {
     }, function(response) {
         if(response) {
             urlListParentNode.removeChild(document.getElementById("blockedUrl-" + response.urlHash));
-            addUrlForm.inputBox.setCustomValidity('');
         }
     });
 }
