@@ -1,6 +1,8 @@
 import * as helper from './scripts/helper.js';
 
 let isFocusModeOn = false;
+let isCustomRedirectOn = false;
+let customRedirectUrl = "";
 let blockedUrls = [];
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -9,8 +11,12 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 
     chrome.storage.local.set({ IsFocusModeOn: false });
+    chrome.storage.local.set({ IsCustomRedirectOn: false });
+    chrome.storage.local.set({ CustomRedirectUrl: "" });
     chrome.storage.local.set({ BlockedUrls: [] });
     isFocusModeOn = false;
+    isCustomRedirectOn = false;
+    customRedirectUrl = "";
     blockedUrls = [];
 });
 
@@ -26,6 +32,12 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     switch(request.action){
         case "toggleOnOff":
             sendResponse(toggle());
+            break;
+        case "toggleRedirect":
+            sendResponse(handleToggleRedirectRequest());
+            break;
+        case "redirectUrlChange":
+            sendResponse(handleRedirectUrlChangeRequest(request));
             break;
         case "addBlockedUrl":
             sendResponse(handleAddUrlRequest(request));
@@ -86,6 +98,24 @@ function checkUrl(url) {
 function redirectTab(tab) {
     console.log('blocking ' + tab.url);
     chrome.tabs.update(tab.id, { url: 'src/pages/index.html' });
+}
+
+function handleToggleRedirectRequest() {
+    isCustomRedirectOn = !isCustomRedirectOn;
+    chrome.storage.local.set({ IsCustomRedirectOn: isCustomRedirectOn });
+    return isCustomRedirectOn;
+}
+
+function handleRedirectUrlChangeRequest(request) {
+    let parsedUrl = parseUrl(request.redirectUrl, false);
+
+    if(!parsedUrl) {
+        return { error: "URL is not valid!" };
+    }
+
+    customRedirectUrl = parsedUrl.fqdn;
+    chrome.storage.local.set({ CustomRedirectUrl: customRedirectUrl });
+    return { redirectUrl: customRedirectUrl };
 }
 
 function handleAddUrlRequest(request) {

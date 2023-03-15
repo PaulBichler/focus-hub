@@ -2,9 +2,12 @@ import * as helper from '../scripts/helper.js';
 import { addAlert } from '../scripts/alertSystem.js';
 
 const focusModeToggle = document.getElementById("focusModeToggle");
+const addCurrentTabUrlButton = document.getElementById("addCurrentTabUrlButton");
+
+const customRedirectForm = document.getElementById("customRedirectForm");
+
 const urlListParentNode = document.getElementById("blockedUrlList");
 const addUrlForm = document.getElementById("addUrlForm");
-const addCurrentTabUrlButton = document.getElementById("addCurrentTabUrlButton");
 
 focusModeToggle.onclick = function() {
     chrome.runtime.sendMessage({
@@ -29,7 +32,7 @@ addCurrentTabUrlButton.onclick = function() {
             }
             else {
                 addUrlToHtmlList(response);
-                addAlert({ type: "success",  message: "Success!" });
+                addAlert({ type: "success",  message: "URL was successfully blocked!" });
             }
         });
     });
@@ -37,6 +40,16 @@ addCurrentTabUrlButton.onclick = function() {
 
 chrome.storage.local.get(["IsFocusModeOn"]).then((result) => {
     focusModeToggle.checked = result.IsFocusModeOn;
+});
+
+chrome.storage.local.get(["IsCustomRedirectOn"]).then((result) => {
+    customRedirectForm.toggleCheckbox.checked = result.IsCustomRedirectOn;
+    customRedirectForm.inputBox.disabled = !result.IsCustomRedirectOn;
+        customRedirectForm.tabUrlPasteButton.disabled = !result.IsCustomRedirectOn;
+});
+
+chrome.storage.local.get(["CustomRedirectUrl"]).then((result) => {
+    customRedirectForm.inputBox.value = result.CustomRedirectUrl;
 });
 
 chrome.storage.local.get(["BlockedUrls"]).then((result) => {
@@ -48,6 +61,46 @@ function initBlockedUrls(urls) {
         addUrlToHtmlList(urls[i]);
     }
 }
+
+customRedirectForm.toggleCheckbox.onclick = function() {
+    chrome.runtime.sendMessage({
+        action: "toggleRedirect"
+    }, function(isRedirectOn) {
+        customRedirectForm.toggleCheckbox.checked = isRedirectOn;
+        customRedirectForm.inputBox.disabled = !isRedirectOn;
+        customRedirectForm.tabUrlPasteButton.disabled = !isRedirectOn;
+    });
+};
+
+customRedirectForm.inputBox.addEventListener('change', function(event) {
+    changeRedirectUrl(customRedirectForm.inputBox.value);
+});
+
+function changeRedirectUrl(newUrl) {
+    chrome.runtime.sendMessage({
+        action: "redirectUrlChange",
+        redirectUrl: newUrl
+    }, function(response) {
+        if(!response) {
+            addAlert({ type: "error",  message: "Unknown Error!" });
+        }
+        else if(response.error) {
+            addAlert({ type: "error",  message: response.error });
+        }
+        else {
+            customRedirectForm.inputBox.value = response.redirectUrl;
+            addAlert({ type: "success",  message: "Redirect URL was changed!" });
+        }
+    });
+}
+
+customRedirectForm.tabUrlPasteButton.onclick = () => {
+    pasteTabUrlToInput(customRedirectForm.inputBox, () => {
+        changeRedirectUrl(customRedirectForm.inputBox.value);
+    });
+};
+
+addUrlForm.tabUrlPasteButton.onclick = () => pasteTabUrlToInput(addUrlForm.inputBox);
 
 addUrlForm.addEventListener('submit', function(event) {
     event.preventDefault(); //prevents reload
@@ -68,12 +121,6 @@ addUrlForm.addEventListener('submit', function(event) {
         }
     });
 });
-
-addUrlForm.tabUrlPasteButton.onclick = function() {
-    chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
-        addUrlForm.inputBox.value = tabs[0].url;
-    });
-};
 
 function removeFromBlockedListAt(hash) {
     chrome.runtime.sendMessage({
@@ -104,6 +151,15 @@ function addUrlToHtmlList(urlObj) {
 
     urlListParentNode.insertAdjacentHTML('beforeend', entryElement);
     urlListParentNode.lastChild.querySelector('[name="urlRemoveButton"]').onclick = function() { removeFromBlockedListAt(hash); };
+}
+
+function pasteTabUrlToInput(input, callback) {
+    chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
+        input.value = tabs[0].url;
+
+        if(callback)
+            callback();
+    });
 }
 
 function getDisplayUrl(parsedUrlObj) {
