@@ -163,5 +163,5 @@ function pasteTabUrlToInput(input, callback) {
 }
 
 function getDisplayUrl(parsedUrlObj) {
-    return parsedUrlObj.blockCompleteDomain ? parsedUrlObj.fqdn + "/*" : parsedUrlObj.fqdn;
+    return parsedUrlObj.protocol + (parsedUrlObj.blockCompleteDomain ? parsedUrlObj.fqdn + "/*" : parsedUrlObj.fqdn);
 }
