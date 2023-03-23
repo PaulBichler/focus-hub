@@ -18,3 +18,15 @@ export const urlObjToHash = function(urlObj) {
 export const urlObjEquals = function(urlObj1, urlObj2) {
     return urlObjToHash(urlObj1) === urlObjToHash(urlObj2);
 };
+
+export function removeTrailingSlash(str) {
+    return str.replace(/\/+$/, '');
+}
+
+export function removeProtocol(url) {
+    return url.replace(/(^\w+:|^)\/\//, '');
+}
+
+export function removeQueryAndHash(url) {
+    return url.split("?")[0].split("#")[0];
+}

@@ -1,3 +1,4 @@
+import * as browser from './scripts/browser.js';
 import * as helper from './scripts/helper.js';
 
 let isFocusModeOn = false;
@@ -5,30 +6,23 @@ let isCustomRedirectOn = false;
 let customRedirectUrl = "";
 let blockedUrls = [];
 
-chrome.runtime.onInstalled.addListener(() => {
-    chrome.action.setBadgeText({
-        text: "OFF",
-    });
+browser.addOnInstalledListener(() => {
+    browser.setBadgeText("OFF");
 
-    chrome.storage.local.set({ IsFocusModeOn: false });
-    chrome.storage.local.set({ IsCustomRedirectOn: false });
-    chrome.storage.local.set({ CustomRedirectUrl: "" });
-    chrome.storage.local.set({ BlockedUrls: [] });
+    browser.save({ IsFocusModeOn: false });
+    browser.save({ IsCustomRedirectOn: false });
+    browser.save({ CustomRedirectUrl: "" });
+    browser.save({ BlockedUrls: [] });
     isFocusModeOn = false;
     isCustomRedirectOn = false;
     customRedirectUrl = "";
     blockedUrls = [];
 });
 
-chrome.storage.local.get(["IsFocusModeOn"]).then((result) => {
-    setActiveFocusMode(result.IsFocusModeOn);
-});
+browser.load(["IsFocusModeOn"], result => setActiveFocusMode(result.IsFocusModeOn));
+browser.load(["BlockedUrls"], result => blockedUrls = result.BlockedUrls);
 
-chrome.storage.local.get(["BlockedUrls"]).then((result) => {
-    blockedUrls = result.BlockedUrls;
-});
-
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+browser.addRuntimeMessageListener(function(request, sender, sendResponse) {
     switch(request.action){
         case "toggleOnOff":
             sendResponse(toggle());
@@ -54,13 +48,13 @@ function toggle() {
 
 function setActiveFocusMode(active) {
     isFocusModeOn = active;
-    chrome.action.setBadgeText({ text: isFocusModeOn ? "ON" : "OFF" });
+    browser.setBadgeText(isFocusModeOn ? "ON" : "OFF");
 
     if(isFocusModeOn) {
         checkAllActiveTabs();
     }
 
-    chrome.storage.local.set({ IsFocusModeOn: isFocusModeOn });
+    browser.save({ IsFocusModeOn: isFocusModeOn });
     return isFocusModeOn;
 }
 
@@ -73,7 +67,7 @@ chrome.tabs.onUpdated.addListener( function (tabId, changeInfo, tab) {
 });
 
 function checkAllActiveTabs() {
-    chrome.tabs.query({}, function(tabs) {
+    browser.getAllTabs(function(tabs) {
         tabs.forEach(tab => {
             if(checkUrl(tab.url)) {
                 redirectTab(tab);
@@ -85,8 +79,8 @@ function checkAllActiveTabs() {
 function checkUrl(url) {
     if(url === undefined) { return false; } 
     
-    url = removeTrailingSlash(url);
-    url = removeQueryAndHash(url); 
+    url = helper.removeTrailingSlash(url);
+    url = helper.removeQueryAndHash(url);
     let foundMatch = false;
 
     blockedUrls.forEach((blockedUrl) => {
@@ -95,7 +89,7 @@ function checkUrl(url) {
                 foundMatch = true;
             }
         } else if(blockedUrl.protocol == '*://') {
-            if(removeProtocol(url) == blockedUrl.fqdn) {
+            if(helper.removeProtocol(url) == blockedUrl.fqdn) {
                 foundMatch = true;
             }
         } else if(url == blockedUrl.protocol + blockedUrl.fqdn) {
@@ -107,12 +101,12 @@ function checkUrl(url) {
 }
 
 function redirectTab(tab) {
-    chrome.tabs.update(tab.id, { url: isCustomRedirectOn ? customRedirectUrl : 'src/pages/index.html' });
+    browser.redirectTab(tab.id, isCustomRedirectOn ? customRedirectUrl : 'src/pages/index.html');
 }
 
 function handleToggleRedirectRequest() {
     isCustomRedirectOn = !isCustomRedirectOn;
-    chrome.storage.local.set({ IsCustomRedirectOn: isCustomRedirectOn });
+    browser.save({ IsCustomRedirectOn: isCustomRedirectOn });
     return isCustomRedirectOn;
 }
 
@@ -129,7 +123,7 @@ function handleRedirectUrlChangeRequest(request) {
       customRedirectUrl = 'https://' + customRedirectUrl;
     }
 
-    chrome.storage.local.set({ CustomRedirectUrl: customRedirectUrl });
+    browser.save({ CustomRedirectUrl: customRedirectUrl });
     return { redirectUrl: customRedirectUrl };
 }
 
@@ -149,7 +143,7 @@ function handleAddUrlRequest(request) {
 
 function handleRemoveUrlRequest(request) {
     blockedUrls.splice(blockedUrls.findIndex((el) => helper.urlObjEquals(el, request.urlHash)), 1);
-    chrome.storage.local.set({ BlockedUrls: blockedUrls });
+    browser.save({ BlockedUrls: blockedUrls });
 
     console.log("Removed URL from the blocked list!");
     console.log(blockedUrls);
@@ -159,7 +153,7 @@ function handleRemoveUrlRequest(request) {
 
 function addUrlToBlockedList(urlObj) {
     blockedUrls.push(urlObj);
-    chrome.storage.local.set({ BlockedUrls: blockedUrls });
+    browser.save({ BlockedUrls: blockedUrls });
 
     if(isFocusModeOn) {
         checkAllActiveTabs();
@@ -174,9 +168,9 @@ function parseUrl(urlString, blockCompleteDomain) {
 
     if(!urlObj) { return null; }
 
-    urlString = removeProtocol(urlString);
-    urlString = removeQueryAndHash(urlString);
-    urlString = removeTrailingSlash(urlString);
+    urlString = helper.removeProtocol(urlString);
+    urlString = helper.removeQueryAndHash(urlString);
+    urlString = helper.removeTrailingSlash(urlString);
 
     let fqdn = blockCompleteDomain ? urlObj[2] : urlString;
     
@@ -190,15 +184,3 @@ function parseUrl(urlString, blockCompleteDomain) {
         blockCompleteDomain: blockCompleteDomain
     };
 }
-
-function removeTrailingSlash(str) {
-    return str.replace(/\/+$/, '');
-}
-
-function removeProtocol(url) {
-    return url.replace(/(^\w+:|^)\/\//, '');
-}
-
-function removeQueryAndHash(url) {
-    return url.split("?")[0].split("#")[0];
-  }

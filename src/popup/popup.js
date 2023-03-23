@@ -1,3 +1,4 @@
+import * as browser from '../scripts/browser.js';
 import * as helper from '../scripts/helper.js';
 import { addAlert } from '../scripts/alertSystem.js';
 
@@ -10,7 +11,7 @@ const urlListParentNode = document.getElementById("blockedUrlList");
 const addUrlForm = document.getElementById("addUrlForm");
 
 focusModeToggle.onclick = function() {
-    chrome.runtime.sendMessage({
+    browser.sendRuntimeMessage({
         action: "toggleOnOff"
     }, function(isOn) {
         focusModeToggle.checked = isOn;
@@ -19,7 +20,7 @@ focusModeToggle.onclick = function() {
 
 addCurrentTabUrlButton.onclick = function() {
     chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
-        chrome.runtime.sendMessage({
+        browser.sendRuntimeMessage({
             action: "addBlockedUrl",
             input: tabs[0].url,
             blockCompleteDomain: false,
@@ -38,23 +39,17 @@ addCurrentTabUrlButton.onclick = function() {
     });
 }
 
-chrome.storage.local.get(["IsFocusModeOn"]).then((result) => {
-    focusModeToggle.checked = result.IsFocusModeOn;
-});
+browser.load(["IsFocusModeOn"], result => focusModeToggle.checked = result.IsFocusModeOn);
 
-chrome.storage.local.get(["IsCustomRedirectOn"]).then((result) => {
+browser.load(["IsCustomRedirectOn"], result => {
     customRedirectForm.toggleCheckbox.checked = result.IsCustomRedirectOn;
     customRedirectForm.inputBox.disabled = !result.IsCustomRedirectOn;
-        customRedirectForm.tabUrlPasteButton.disabled = !result.IsCustomRedirectOn;
+    customRedirectForm.tabUrlPasteButton.disabled = !result.IsCustomRedirectOn;
 });
 
-chrome.storage.local.get(["CustomRedirectUrl"]).then((result) => {
-    customRedirectForm.inputBox.value = result.CustomRedirectUrl;
-});
+browser.load(["CustomRedirectUrl"], result => customRedirectForm.inputBox.value = result.CustomRedirectUrl);
 
-chrome.storage.local.get(["BlockedUrls"]).then((result) => {
-    initBlockedUrls(result.BlockedUrls);
-});
+browser.load(["BlockedUrls"], result => initBlockedUrls(result.BlockedUrls));
 
 function initBlockedUrls(urls) {
     for (let i = 0; i < urls.length; i++) {
@@ -63,7 +58,7 @@ function initBlockedUrls(urls) {
 }
 
 customRedirectForm.toggleCheckbox.onclick = function() {
-    chrome.runtime.sendMessage({
+    browser.sendRuntimeMessage({
         action: "toggleRedirect"
     }, function(isRedirectOn) {
         customRedirectForm.toggleCheckbox.checked = isRedirectOn;
@@ -77,7 +72,7 @@ customRedirectForm.inputBox.addEventListener('change', function(event) {
 });
 
 function changeRedirectUrl(newUrl) {
-    chrome.runtime.sendMessage({
+    browser.sendRuntimeMessage({
         action: "redirectUrlChange",
         redirectUrl: newUrl
     }, function(response) {
@@ -105,7 +100,7 @@ addUrlForm.tabUrlPasteButton.onclick = () => pasteTabUrlToInput(addUrlForm.input
 addUrlForm.addEventListener('submit', function(event) {
     event.preventDefault(); //prevents reload
 
-    chrome.runtime.sendMessage({
+    browser.sendRuntimeMessage({
         action: "addBlockedUrl",
         input: addUrlForm.inputBox.value,
         blockCompleteDomain: addUrlForm.blockCompleteDomainCheckbox.checked,
@@ -123,7 +118,7 @@ addUrlForm.addEventListener('submit', function(event) {
 });
 
 function removeFromBlockedListAt(hash) {
-    chrome.runtime.sendMessage({
+    browser.sendRuntimeMessage({
         action: "removeBlockedUrl",
         urlHash: hash,
     }, function(response) {
@@ -154,7 +149,7 @@ function addUrlToHtmlList(urlObj) {
 }
 
 function pasteTabUrlToInput(input, callback) {
-    chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
+    browser.getActiveTab(tabs => {
         input.value = tabs[0].url;
 
         if(callback)
