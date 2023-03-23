@@ -12,6 +12,7 @@ const addUrlForm = document.getElementById("addUrlForm");
 
 focusModeToggle.onclick = function() {
     browser.sendRuntimeMessage({
+        context: "FocusMode",
         action: "toggleOnOff"
     }, function(isOn) {
         focusModeToggle.checked = isOn;
@@ -21,6 +22,7 @@ focusModeToggle.onclick = function() {
 addCurrentTabUrlButton.onclick = function() {
     chrome.tabs.query({active: true, lastFocusedWindow: true}, tabs => {
         browser.sendRuntimeMessage({
+            context: "FocusMode",
             action: "addBlockedUrl",
             input: tabs[0].url,
             blockCompleteDomain: false,
@@ -59,6 +61,7 @@ function initBlockedUrls(urls) {
 
 customRedirectForm.toggleCheckbox.onclick = function() {
     browser.sendRuntimeMessage({
+        context: "FocusMode",
         action: "toggleRedirect"
     }, function(isRedirectOn) {
         customRedirectForm.toggleCheckbox.checked = isRedirectOn;
@@ -73,6 +76,7 @@ customRedirectForm.inputBox.addEventListener('change', function(event) {
 
 function changeRedirectUrl(newUrl) {
     browser.sendRuntimeMessage({
+        context: "FocusMode",
         action: "redirectUrlChange",
         redirectUrl: newUrl
     }, function(response) {
@@ -101,6 +105,7 @@ addUrlForm.addEventListener('submit', function(event) {
     event.preventDefault(); //prevents reload
 
     browser.sendRuntimeMessage({
+        context: "FocusMode",
         action: "addBlockedUrl",
         input: addUrlForm.inputBox.value,
         blockCompleteDomain: addUrlForm.blockCompleteDomainCheckbox.checked,
@@ -119,6 +124,7 @@ addUrlForm.addEventListener('submit', function(event) {
 
 function removeFromBlockedListAt(hash) {
     browser.sendRuntimeMessage({
+        context: "FocusMode",
         action: "removeBlockedUrl",
         urlHash: hash,
     }, function(response) {

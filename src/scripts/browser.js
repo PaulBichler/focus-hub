@@ -19,6 +19,10 @@ export function sendRuntimeMessage(messageObj, responseCallback) {
     chrome.runtime.sendMessage(messageObj, responseCallback);
 }
 
+export function addTabUpdateListener(listener) {
+    chrome.tabs.onUpdated.addListener(listener);
+}
+
 export function getAllTabs(callback) {
     chrome.tabs.query({}, tabs => callback?.(tabs));
 }
