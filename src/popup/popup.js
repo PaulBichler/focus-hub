@@ -85,6 +85,7 @@ function changeRedirectUrl(newUrl) {
         }
         else if(response.error) {
             addAlert({ type: "error",  message: response.error });
+            customRedirectForm.inputBox.value = "";
         }
         else {
             customRedirectForm.inputBox.value = response.redirectUrl;

@@ -30,3 +30,7 @@ export function removeProtocol(url) {
 export function removeQueryAndHash(url) {
     return url.split("?")[0].split("#")[0];
 }
+
+export function parseUrl(urlString) {
+    return urlString.match(/^(?<protocol>https?:\/\/)?(?=(?<fqdn>[^:/]+))(?:(?<service>www)\.)?(?:(?<subdomain>[^:/]+)\.)*(?<domain>[^:/]+\.[a-z0-9]+)(?::(?<port>\d+))?(?<path>\/[^?]*)?(?:\?(?<query>[^#]*))?(?:#(?<hash>.*))?/i);
+}

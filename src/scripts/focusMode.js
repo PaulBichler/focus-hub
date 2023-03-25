@@ -1,6 +1,8 @@
 import * as browser from './browser.js';
 import * as helper from './helper.js';
 
+const defaultRedirectUrl = '../src/pages/index.html';
+
 let isFocusModeOn = false;
 let isCustomRedirectOn = false;
 let customRedirectUrl = "";
@@ -56,45 +58,57 @@ function setActiveFocusMode(active) {
 function checkAllActiveTabs() {
     browser.getAllTabs(function(tabs) {
         tabs.forEach(tab => {
-            if(checkUrl(tab.url)) {
+            if(isUrlBlocked(tab.url)) {
                 redirectTab(tab);
             }
         });
     });
 }
 
-function checkUrl(url) {
+function isUrlBlocked(url) {
     if(url === undefined) { return false; } 
-    
-    url = helper.removeTrailingSlash(url);
+
+    url = url.replace('www.', '');
     url = helper.removeQueryAndHash(url);
+    url = helper.removeTrailingSlash(url);
     let foundMatch = false;
 
+    console.log("checking url: " + url + " against: ");
+    console.log(blockedUrls);
+
     blockedUrls.forEach((blockedUrl) => {
-        if(blockedUrl.blockCompleteDomain) {
-            if(url.includes(blockedUrl.fqdn)) {
-                foundMatch = true;
-            }
-        } else if(blockedUrl.protocol == '*://') {
-            if(helper.removeProtocol(url) == blockedUrl.fqdn) {
-                foundMatch = true;
-            }
-        } else if(url == blockedUrl.protocol + blockedUrl.fqdn) {
+        if(compareWithBlockedUrl(url, blockedUrl)) {
             foundMatch = true;
         }
     });
     
-    console.log("found match: " + foundMatch);
+    console.log("match found: " + foundMatch);
     return foundMatch;
 }
 
+function compareWithBlockedUrl(urlToCompare, blockedUrl) {
+    if(blockedUrl.blockCompleteDomain) {
+        if(urlToCompare.includes(blockedUrl.fqdn)) {
+            return true;
+        }
+    } else if(blockedUrl.protocol == '*://') {
+        if(helper.removeProtocol(urlToCompare) == blockedUrl.fqdn) {
+            return true;
+        }
+    } else if(urlToCompare == blockedUrl.protocol + blockedUrl.fqdn) {
+        return true;
+    }
+}
+
 function redirectTab(tab) {
-    browser.redirectTab(tab.id, isCustomRedirectOn ? customRedirectUrl : '../pages/index.html');
+    let redirectUrl = isCustomRedirectOn ? customRedirectUrl : defaultRedirectUrl;
+    console.log("Custom Redirect on: " + isCustomRedirectOn + ", redirecting to: " + redirectUrl);
+    browser.redirectTab(tab.id, redirectUrl);
 }
 
 function handleTabUpdate(tabId, changeInfo, tab) {
     if(isFocusModeOn && changeInfo.status === 'complete') {
-        if(checkUrl(tab.url)) {
+        if(isUrlBlocked(tab.url)) {
             redirectTab(tab);
         }
     }
@@ -107,18 +121,22 @@ function handleToggleRedirectRequest() {
 }
 
 function handleRedirectUrlChangeRequest(request) {
-    let parsedUrl = parseUrl(request.redirectUrl, false);
+    let parsedUrl = helper.parseUrl(request.redirectUrl);
 
     if(!parsedUrl) {
         return { error: "URL is not valid!" };
     }
 
-    customRedirectUrl = parsedUrl.fqdn;
-
-    if(parsedUrl.protocol === '*://') {
-      customRedirectUrl = 'https://' + customRedirectUrl;
+    if(parsedUrl.protocol === undefined ) {
+        request.redirectUrl = 'https://' + request.redirectUrl;
     }
 
+    console.log(request.redirectUrl);
+    if(isUrlBlocked(request.redirectUrl)) {
+        return { error: "Cannot redirect to a blocked URL!" };
+    }
+
+    customRedirectUrl = request.redirectUrl;
     browser.save({ CustomRedirectUrl: customRedirectUrl });
     return { redirectUrl: customRedirectUrl };
 }
@@ -132,13 +150,16 @@ function handleAddUrlRequest(request) {
     else if(blockedUrls.some(el => helper.urlObjEquals(el, parsedUrl))) {
         return { error: "This URL is already blocked!" };
     }
+    else if(compareWithBlockedUrl(customRedirectUrl, parsedUrl)) {
+        return { error: "Cannot block the redirect URL! Please change your redirect URL and try again!" };
+    }
 
     addUrlToBlockedList(parsedUrl);
     return parsedUrl;
 }
 
 function handleRemoveUrlRequest(request) {
-    blockedUrls.splice(blockedUrls.findIndex((el) => helper.urlObjEquals(el, request.urlHash)), 1);
+    blockedUrls.splice(blockedUrls.findIndex((el) => helper.urlObjToHash(el) === request.urlHash), 1);
     browser.save({ BlockedUrls: blockedUrls });
 
     console.log("Removed URL from the blocked list!");
@@ -160,19 +181,16 @@ function addUrlToBlockedList(urlObj) {
 }
 
 function parseUrl(urlString, blockCompleteDomain) {
-    let urlObj = urlString.match(/^(?<protocol>https?:\/\/)?(?=(?<fqdn>[^:/]+))(?:(?<service>www|ww\d|cdn|mail|pop\d+|ns\d+|git)\.)?(?:(?<subdomain>[^:/]+)\.)*(?<domain>[^:/]+\.[a-z0-9]+)(?::(?<port>\d+))?(?<path>\/[^?]*)?(?:\?(?<query>[^#]*))?(?:#(?<hash>.*))?/i);
+    let urlObj = helper.parseUrl(urlString);
 
     if(!urlObj) { return null; }
 
     urlString = helper.removeProtocol(urlString);
+    urlString = urlString.replace('www.', '');
     urlString = helper.removeQueryAndHash(urlString);
     urlString = helper.removeTrailingSlash(urlString);
 
     let fqdn = blockCompleteDomain ? urlObj[2] : urlString;
-    
-    if(!urlObj[3]) { //no service specified? --> assume www.
-        fqdn = "www." + fqdn;
-    }
 
     return {
         protocol: urlObj[1] ? urlObj[1] : '*://',
