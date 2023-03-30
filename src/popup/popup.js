@@ -10,6 +10,9 @@ const customRedirectForm = document.getElementById("customRedirectForm");
 const urlListParentNode = document.getElementById("blockedUrlList");
 const addUrlForm = document.getElementById("addUrlForm");
 
+const wlUrlListParentNode = document.getElementById("whitelistedUrlList");
+const addWlUrlForm = document.getElementById("addWlUrlForm");
+
 focusModeToggle.onclick = function() {
     browser.sendRuntimeMessage({
         context: "FocusMode",
@@ -101,6 +104,7 @@ customRedirectForm.tabUrlPasteButton.onclick = () => {
 };
 
 addUrlForm.tabUrlPasteButton.onclick = () => pasteTabUrlToInput(addUrlForm.inputBox);
+addWlUrlForm.tabUrlPasteButton.onclick = () => pasteTabUrlToInput(addWlUrlForm.inputBox);
 
 addUrlForm.addEventListener('submit', function(event) {
     event.preventDefault(); //prevents reload
