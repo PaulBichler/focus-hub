@@ -1,5 +1,5 @@
-import * as browser from './scripts/browser.js';
-import * as focusMode from './scripts/focusMode.js';
+import * as browser from '../utilities/browser.js';
+import * as focusMode from './focusMode.js';
 
 browser.addOnInstalledListener(() => {
     focusMode.OnInstall();

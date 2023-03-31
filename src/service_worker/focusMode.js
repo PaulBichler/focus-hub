@@ -1,12 +1,13 @@
-import * as browser from './browser.js';
-import * as helper from './helper.js';
+import * as browser from '../utilities/browser.js';
+import * as helper from '../utilities/urlHelper.js';
 
-const defaultRedirectUrl = '../src/pages/index.html';
+const defaultRedirectUrl = './src/pages/index.html';
 
 let isFocusModeOn = false;
 let isCustomRedirectOn = false;
 let customRedirectUrl = "";
 let blockedUrls = [];
+let whitelistedUrls = [];
 
 export function OnInstall() {
     console.log("Install Focus Mode");
@@ -127,11 +128,10 @@ function handleRedirectUrlChangeRequest(request) {
         return { error: "URL is not valid!" };
     }
 
-    if(parsedUrl.protocol === undefined ) {
+    if(!parsedUrl[1] === undefined) {
         request.redirectUrl = 'https://' + request.redirectUrl;
     }
 
-    console.log(request.redirectUrl);
     if(isUrlBlocked(request.redirectUrl)) {
         return { error: "Cannot redirect to a blocked URL!" };
     }

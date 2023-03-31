@@ -1,4 +1,4 @@
-import * as helper from './helper.js';
+import * as helper from './urlHelper.js';
 
 const maxAlerts = 2;
 const alertContainer = document.getElementById("alertContainer");

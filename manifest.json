@@ -20,7 +20,7 @@
     },
     "minimum_chrome_version": "92",
     "background": {
-        "service_worker": "src/background.js",
+        "service_worker": "src/service_worker/background.js",
         "type": "module"
     },
     "permissions": ["tabs", "storage"]
