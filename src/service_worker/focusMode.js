@@ -16,16 +16,19 @@ export function OnInstall() {
     browser.save({ IsCustomRedirectOn: false });
     browser.save({ CustomRedirectUrl: "" });
     browser.save({ BlockedUrls: [] });
+    browser.save({ WhitelistedUrls: [] });
     isFocusModeOn = false;
     isCustomRedirectOn = false;
     customRedirectUrl = "";
     blockedUrls = [];
+    whitelistedUrls = [];
 }
 
 export function Init() {
     console.log("Init Focus Mode");
     browser.load(["IsFocusModeOn"], result => setActiveFocusMode(result.IsFocusModeOn));
     browser.load(["BlockedUrls"], result => blockedUrls = result.BlockedUrls);
+    browser.load(["WhitelistedUrls"], result => whitelistedUrls = result.WhitelistedUrls);
     browser.addTabUpdateListener(handleTabUpdate);
 }
 
@@ -39,8 +42,12 @@ export function handleMessage(request) {
             return handleRedirectUrlChangeRequest(request);
         case "addBlockedUrl":
             return handleAddUrlRequest(request);
+        case "addWhitelistedUrl":
+            return handleWhitelistUrlRequest(request);
         case "removeBlockedUrl":
-            return handleRemoveUrlRequest(request);
+            return handleRemoveUrlRequest(request, false);
+        case "removeWhitelistedUrl":
+            return handleRemoveUrlRequest(request, true)
     }
 }
 
@@ -59,7 +66,7 @@ function setActiveFocusMode(active) {
 function checkAllActiveTabs() {
     browser.getAllTabs(function(tabs) {
         tabs.forEach(tab => {
-            if(isUrlBlocked(tab.url)) {
+            if(!isUrlWhitelisted(tab.url) && isUrlBlocked(tab.url)) {
                 redirectTab(tab);
             }
         });
@@ -85,6 +92,22 @@ function isUrlBlocked(url) {
     
     console.log("match found: " + foundMatch);
     return foundMatch;
+}
+
+function isUrlWhitelisted(url) {
+    if(url === undefined) { return false; } 
+
+    url = url.replace('www.', '');
+    let matchFound = false;
+
+    whitelistedUrls.forEach((whitelistedUrl) => {
+        if(url == whitelistedUrl.fqdn) {
+            matchFound = true;
+            return;
+        }
+    });
+    
+    return matchFound;
 }
 
 function compareWithBlockedUrl(urlToCompare, blockedUrl) {
@@ -142,7 +165,7 @@ function handleRedirectUrlChangeRequest(request) {
 }
 
 function handleAddUrlRequest(request) {
-    let parsedUrl = parseUrl(request.input, request.blockCompleteDomain);
+    let parsedUrl = parseUrl(request.input, request.blockCompleteDomain, false);
 
     if(!parsedUrl) {
         return { error: "URL is not valid!" };
@@ -158,12 +181,34 @@ function handleAddUrlRequest(request) {
     return parsedUrl;
 }
 
-function handleRemoveUrlRequest(request) {
-    blockedUrls.splice(blockedUrls.findIndex((el) => helper.urlObjToHash(el) === request.urlHash), 1);
-    browser.save({ BlockedUrls: blockedUrls });
+function handleWhitelistUrlRequest(request) {
+    let parsedUrl = parseUrl(request.input, false, true);
 
-    console.log("Removed URL from the blocked list!");
-    console.log(blockedUrls);
+    if(!parsedUrl) {
+        return { error: "URL is not valid!" };
+    }
+    else if(whitelistedUrls.some(el => helper.urlObjEquals(el, parsedUrl))) {
+        return { error: "This URL is already whitelisted!" };
+    }
+
+    addUrlToWhitelist(parsedUrl);
+    return parsedUrl;
+}
+
+function handleRemoveUrlRequest(request, isWhitelist) {
+    if(isWhitelist) {
+        whitelistedUrls.splice(whitelistedUrls.findIndex((el) => helper.urlObjToHash(el) === request.urlHash), 1);
+        browser.save({ WhitelistedUrls: whitelistedUrls });
+        checkAllActiveTabs();
+        console.log("Removed URL from the whitelist!");
+        console.log(whitelistedUrls);
+    }
+    else {
+        blockedUrls.splice(blockedUrls.findIndex((el) => helper.urlObjToHash(el) === request.urlHash), 1);
+        browser.save({ BlockedUrls: blockedUrls });
+        console.log("Removed URL from the blocked list!");
+        console.log(blockedUrls);
+    }
 
     return { urlHash: request.urlHash };
 }
@@ -180,15 +225,25 @@ function addUrlToBlockedList(urlObj) {
     console.log(blockedUrls);
 }
 
-function parseUrl(urlString, blockCompleteDomain) {
+function addUrlToWhitelist(urlObj) {
+    whitelistedUrls.push(urlObj);
+    browser.save({ WhitelistedUrls: whitelistedUrls });
+
+    console.log("Added new URL to the whitelist!");
+    console.log(whitelistedUrls);
+}
+
+function parseUrl(urlString, blockCompleteDomain, isWhitelist) {
+    urlString = urlString.replace('www.', '');
     let urlObj = helper.parseUrl(urlString);
 
     if(!urlObj) { return null; }
 
-    urlString = helper.removeProtocol(urlString);
-    urlString = urlString.replace('www.', '');
-    urlString = helper.removeQueryAndHash(urlString);
-    urlString = helper.removeTrailingSlash(urlString);
+    if(!isWhitelist) {
+        urlString = helper.removeProtocol(urlString);
+        urlString = helper.removeQueryAndHash(urlString);
+        urlString = helper.removeTrailingSlash(urlString);
+    }
 
     let fqdn = blockCompleteDomain ? urlObj[2] : urlString;
 

@@ -3,11 +3,16 @@ import * as browser from '../../utilities/browser.js';
 import { addAlert } from '../../utilities/alertSystem.js';
 
 export function Init() {
-    browser.load(["BlockedUrls"], result => initBlockedUrls(result.BlockedUrls));
+    browser.load(["BlockedUrls"], result => initUrls(result.BlockedUrls, false));
+    browser.load(["WhitelistedUrls"], result => initUrls(result.WhitelistedUrls, true));
 } 
 
 export function blockUrl(urlObj) {
     addUrlToHtmlList(urlObj, urlListParentNode);
+}
+
+export function whitelistUrl(urlObj) {
+    addUrlToHtmlList(urlObj, wlUrlListParentNode);
 }
 
 const urlListParentNode = document.getElementById("blockedUrlList");
@@ -19,14 +24,24 @@ const addWlUrlForm = document.getElementById("addWlUrlForm");
 addUrlForm.tabUrlPasteButton.onclick = () => pasteTabUrlToInput(addUrlForm.inputBox);
 addWlUrlForm.tabUrlPasteButton.onclick = () => pasteTabUrlToInput(addWlUrlForm.inputBox);
 
-addUrlForm.addEventListener('submit', function(event) {
+addUrlForm.addEventListener('submit', (event) => onAddUrlFormSubmit(event, false));
+addWlUrlForm.addEventListener('submit', (event) => onAddUrlFormSubmit(event, true));
+
+function onAddUrlFormSubmit(event, isWhitelist) {
     event.preventDefault(); //prevents reload
+
+    let urlForm = isWhitelist ? addWlUrlForm : addUrlForm;
+
+    if(isWhitelist)
+        console.log("whitelist submit");
+    else
+        console.log("block submit");
 
     browser.sendRuntimeMessage({
         context: "FocusMode",
-        action: "addBlockedUrl",
-        input: addUrlForm.inputBox.value,
-        blockCompleteDomain: addUrlForm.blockCompleteDomainCheckbox.checked,
+        action: isWhitelist ? "addWhitelistedUrl" : "addBlockedUrl",
+        input: urlForm.inputBox.value,
+        blockCompleteDomain: isWhitelist ? false : urlForm.blockCompleteDomainCheckbox.checked,
     }, function(response) {
         if(!response) {
             addAlert({ type: "error",  message: "Unknown Error!" });
@@ -35,35 +50,55 @@ addUrlForm.addEventListener('submit', function(event) {
             addAlert({ type: "error",  message: response.error });
         }
         else {
-            addUrlToHtmlList(response, urlListParentNode);
+            addUrlToHtmlList(response, isWhitelist);
+            addAlert({ type: "success",  message: "URL " + (isWhitelist ? "whitelisted" : "blocked") + " successfully!" });
         }
     });
-});
+}
 
-function initBlockedUrls(urls) {
+function initUrls(urls, isWhitelist) {
     for (let i = 0; i < urls.length; i++) {
-        addUrlToHtmlList(urls[i], urlListParentNode);
+        addUrlToHtmlList(urls[i], isWhitelist);
     }
 }
 
-function removeFromBlockedListAt(hash) {
+function removeUrlFromList(hash, isWhitelist = false) {
     browser.sendRuntimeMessage({
         context: "FocusMode",
-        action: "removeBlockedUrl",
+        action: isWhitelist ? "removeWhitelistedUrl" : "removeBlockedUrl",
         urlHash: hash,
     }, function(response) {
         if(response) {
-            urlListParentNode.removeChild(document.getElementById("blockedUrl-" + response.urlHash));
+            if(isWhitelist) {
+                wlUrlListParentNode.removeChild(document.getElementById("whitelistedUrl-" + response.urlHash));
+            }
+            else{
+                urlListParentNode.removeChild(document.getElementById("blockedUrl-" + response.urlHash));
+            }
         }
     });
 }
 
-function addUrlToHtmlList(urlObj, listParentNode) {
+function addUrlToHtmlList(urlObj, isWhitelist = false) {
     let hash = helper.urlObjToHash(urlObj);
-    let entryElement = `<li class="py-3 sm:py-4" id="blockedUrl-` + hash +`">
+    let id, node, displayUrl;
+
+    if(isWhitelist) {
+        id = "whitelistedUrl-";
+        node = wlUrlListParentNode;
+        displayUrl = urlObj.fqdn;
+    }
+    else {
+        id = "blockedUrl-";
+        node = urlListParentNode;
+        displayUrl = getDisplayUrl(urlObj);
+    }
+
+    id += hash;
+    let entryElement = `<li class="py-3 sm:py-4" id="` + id +`">
         <div class="flex items-center space-x-4">
             <div class="flex-1 items-center min-w-0">
-                <p class="text-base text-gray-500 dark:text-gray-400 break-words">` + getDisplayUrl(urlObj) +`</p>
+                <p class="text-base text-gray-500 dark:text-gray-400 break-words">` + displayUrl +`</p>
             </div>
             <div class="inline-flex items-center text-base font-semibold text-gray-900 dark:text-white">
                 <button type="button" name="urlRemoveButton" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white" >
@@ -74,8 +109,8 @@ function addUrlToHtmlList(urlObj, listParentNode) {
         </div>
     </li>`
 
-    listParentNode.insertAdjacentHTML('beforeend', entryElement);
-    listParentNode.lastChild.querySelector('[name="urlRemoveButton"]').onclick = function() { removeFromBlockedListAt(hash); };
+    node.insertAdjacentHTML('beforeend', entryElement);
+    node.lastChild.querySelector('[name="urlRemoveButton"]').onclick = function() { removeUrlFromList(hash, isWhitelist); };
 }
 
 function pasteTabUrlToInput(input) {
