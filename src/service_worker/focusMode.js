@@ -67,7 +67,7 @@ function checkAllActiveTabs() {
     browser.getAllTabs(function(tabs) {
         tabs.forEach(tab => {
             if(!isUrlWhitelisted(tab.url) && isUrlBlocked(tab.url)) {
-                redirectTab(tab);
+                redirectTab(tab, tab.url);
             }
         });
     });
@@ -124,8 +124,9 @@ function compareWithBlockedUrl(urlToCompare, blockedUrl) {
     }
 }
 
-function redirectTab(tab) {
+function redirectTab(tab, blockedUrl) {
     let redirectUrl = isCustomRedirectOn ? customRedirectUrl : defaultRedirectUrl;
+    redirectUrl += "?url=" + blockedUrl;
     console.log("Custom Redirect on: " + isCustomRedirectOn + ", redirecting to: " + redirectUrl);
     browser.redirectTab(tab.id, redirectUrl);
 }
@@ -133,7 +134,7 @@ function redirectTab(tab) {
 function handleTabUpdate(tabId, changeInfo, tab) {
     if(isFocusModeOn && changeInfo.status === 'complete') {
         if(isUrlBlocked(tab.url)) {
-            redirectTab(tab);
+            redirectTab(tab, tab.url);
         }
     }
 }
