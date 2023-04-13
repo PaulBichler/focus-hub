@@ -14,6 +14,27 @@ focusModeToggle.onclick = function() {
       context: "FocusMode",
       action: "toggleOnOff"
   }, function(isOn) {
+      if(!isOn && params.has("url")) {
+        browser.redirectCurrentTab(params.get("url"));
+      }
+
       focusModeToggle.checked = isOn;
+  });
+}
+
+document.getElementById("whitelistButton").onclick = function() {
+  if(!params.has("url")) {
+    return;
+  }
+
+  browser.sendRuntimeMessage({
+    context: "FocusMode",
+    action: "addWhitelistedUrl",
+    input: params.get("url"),
+    blockCompleteDomain: false
+  }, function(response) {
+      if(response && !response.error) {
+        browser.redirectCurrentTab(params.get("url"));
+      }
   });
 }

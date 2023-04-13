@@ -126,14 +126,14 @@ function compareWithBlockedUrl(urlToCompare, blockedUrl) {
 
 function redirectTab(tab, blockedUrl) {
     let redirectUrl = isCustomRedirectOn ? customRedirectUrl : defaultRedirectUrl;
-    redirectUrl += "?url=" + blockedUrl;
+    redirectUrl += "?url=" + encodeURIComponent(blockedUrl);
     console.log("Custom Redirect on: " + isCustomRedirectOn + ", redirecting to: " + redirectUrl);
     browser.redirectTab(tab.id, redirectUrl);
 }
 
 function handleTabUpdate(tabId, changeInfo, tab) {
     if(isFocusModeOn && changeInfo.status === 'complete') {
-        if(isUrlBlocked(tab.url)) {
+        if(!isUrlWhitelisted(tab.url) && isUrlBlocked(tab.url)) {
             redirectTab(tab, tab.url);
         }
     }
