@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Focus Hub",
-    "description": "Allows the user to block specific websites and instead display a motivational page.",
+    "description": "An extension designed to help you stay focused and productive while browsing the internet.",
     "version": "1.0",
     "icons": {
       "16": "src/images/icon/icon-16.png",
