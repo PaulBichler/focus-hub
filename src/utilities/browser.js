@@ -36,7 +36,9 @@ export function redirectTab(tabId, redirectURL) {
 }
 
 export function redirectCurrentTab(redirectURL) {
-    chrome.tabs.update({ url: redirectURL });
+    chrome.tabs.getCurrent(function(tab) {
+        chrome.tabs.update(tab.id, { url: redirectURL });
+    });
 }
 
 export function setBadgeText(text) {

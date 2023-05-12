@@ -38,3 +38,11 @@ document.getElementById("whitelistButton").onclick = function() {
       }
   });
 }
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local') {
+    if(!changes.IsFocusModeOn?.newValue || changes.BlockedUrls || changes.WhitelistedUrls) {
+        browser.redirectCurrentTab(params.get("url"));
+    }
+  }
+});
