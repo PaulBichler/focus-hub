@@ -32,17 +32,28 @@ document.getElementById("whitelistButton").onclick = function() {
     action: "addWhitelistedUrl",
     input: params.get("url"),
     blockCompleteDomain: false
-  }, function(response) {
-      if(response && !response.error) {
-        browser.redirectCurrentTab(params.get("url"));
-      }
   });
 }
 
-chrome.storage.onChanged.addListener((changes, area) => {
+browser.addStorageChangeListener((changes, area) => {
   if (area === 'local') {
-    if(!changes.IsFocusModeOn?.newValue || changes.BlockedUrls || changes.WhitelistedUrls) {
+    if(changes.IsFocusModeOn) {
+      if(!changes.IsFocusModeOn.newValue) {
         browser.redirectCurrentTab(params.get("url"));
+      }
+    }
+
+    if(changes.BlockedUrls || changes.WhitelistedUrls) {
+      browser.sendRuntimeMessage({
+        context: "FocusMode",
+        action: "requestUrlCheck",
+        url: params.get("url")
+      }, function(response) {
+          console.log(response);
+          if(!response) {
+            browser.redirectCurrentTab(params.get("url"));
+          }
+      });
     }
   }
 });

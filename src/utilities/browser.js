@@ -23,6 +23,10 @@ export function addTabUpdateListener(listener) {
     chrome.tabs.onUpdated.addListener(listener);
 }
 
+export function addStorageChangeListener(listener) {
+    chrome.storage.onChanged.addListener(listener);
+}
+
 export function getAllTabs(callback) {
     chrome.tabs.query({}, tabs => callback?.(tabs));
 }

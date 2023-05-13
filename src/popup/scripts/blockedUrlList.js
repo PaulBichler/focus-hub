@@ -8,11 +8,11 @@ export function Init() {
 } 
 
 export function blockUrl(urlObj) {
-    addUrlToHtmlList(urlObj, urlListParentNode);
+    addUrlToHtmlList(urlObj, false);
 }
 
 export function whitelistUrl(urlObj) {
-    addUrlToHtmlList(urlObj, wlUrlListParentNode);
+    addUrlToHtmlList(urlObj, true);
 }
 
 const urlListParentNode = document.getElementById("blockedUrlList");

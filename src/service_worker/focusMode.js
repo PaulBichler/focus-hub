@@ -47,7 +47,9 @@ export function handleMessage(request) {
         case "removeBlockedUrl":
             return handleRemoveUrlRequest(request, false);
         case "removeWhitelistedUrl":
-            return handleRemoveUrlRequest(request, true)
+            return handleRemoveUrlRequest(request, true);
+        case "requestUrlCheck":
+            return checkUrl(request.url);
     }
 }
 
@@ -66,11 +68,15 @@ function setActiveFocusMode(active) {
 function checkAllActiveTabs() {
     browser.getAllTabs(function(tabs) {
         tabs.forEach(tab => {
-            if(!isUrlWhitelisted(tab.url) && isUrlBlocked(tab.url)) {
+            if(checkUrl(tab.url)) {
                 redirectTab(tab, tab.url);
             }
         });
     });
+}
+
+function checkUrl(url) {
+    return !isUrlWhitelisted(url) && isUrlBlocked(url);
 }
 
 function isUrlBlocked(url) {
