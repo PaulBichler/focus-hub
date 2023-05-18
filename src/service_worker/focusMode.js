@@ -29,6 +29,8 @@ export function Init() {
     browser.load(["IsFocusModeOn"], result => setActiveFocusMode(result.IsFocusModeOn));
     browser.load(["BlockedUrls"], result => blockedUrls = result.BlockedUrls);
     browser.load(["WhitelistedUrls"], result => whitelistedUrls = result.WhitelistedUrls);
+    browser.load(["IsCustomRedirectOn"], result => isCustomRedirectOn = result.IsCustomRedirectOn);
+    browser.load(["CustomRedirectUrl"], result => customRedirectUrl = result.CustomRedirectUrl);
     browser.addTabUpdateListener(handleTabUpdate);
 }
 
